@@ -68,9 +68,9 @@ Given:
 - **M** translation words in reading order
 - A word-to-line alignment function **a(w, l)** giving the alignment score of assigning translation word *w* to source line *l*
 
-Find cut points $c_0 = 0 < c_1 < \cdots < c_N = M$ that maximize:
+Find cut points $c_0 = 0 < c_1 < \cdots < c_N = M$ that solve:
 
-$$\sum_{i=0}^{N-1} \sum_{w=c_i}^{c_{i+1}-1} a(w, \text{line}_i)$$
+$$\max_{c_0,\ldots,c_N}\;\sum_{i=0}^{N-1} \sum_{w=c_i}^{c_{i+1}-1} a(w, \text{line}_i) \quad c_0=0,\; c_N=M$$
 
 subject to the monotonicity constraint (translation word order is preserved).
 
