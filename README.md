@@ -176,6 +176,13 @@ python example.py
 3. T. Yousef, C. Palladino, F. Shamsian, A. Meeus, and G.C. Crane, "[Translation alignment with Ugarit](https://www.mdpi.com/2078-2489/13/2/65)," *Information*, 13(2):65, 2022.
 4. G.R. Crane et al., [Beyond Translation](https://github.com/scaife-viewer/beyond-translation-site), Scaife Viewer project.
 
+## How to Cite
+
+```
+Francisco Riordan, "Alignment-Driven Line Breaking for Parallel Texts" (2026).
+https://github.com/ciscoriordan/knuth-plass-riordan
+```
+
 ## License
 
 MIT License. See [LICENSE](LICENSE).
