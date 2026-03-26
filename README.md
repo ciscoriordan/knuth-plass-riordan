@@ -157,7 +157,38 @@ The algorithm works across any language pair. Here it redistributes Polylas's Mo
 160: τῶν Τρώων, καὶ σύ, ὦ σκυλοπρόσωπε, λησμονημένα τά ᾽χεις.
      ^^^^^^^^^^
 ```
-*"τῶν Τρώων"* moves to line 160 where `πρὸς Τρώων` lives. The trade-off is uneven line lengths - line 159 is short. In practice, the extended version of this algorithm (used in [iliad-align](https://github.com/ciscoriordan/iliad-align)) adds a Knuth-Plass visual balance pass and short-line penalties to address this.
+*"τῶν Τρώων"* moves to line 160 where `πρὸς Τρώων` lives. The trade-off is uneven line lengths - line 159 is short. See [Extended Version](#extended-version-two-pass-with-visual-balance) below for how to address this.
+
+---
+
+## Extended Version: Two-Pass with Visual Balance
+
+The core algorithm optimizes purely for alignment score, which can produce very uneven line lengths (as in the MG example above). An extended two-pass version addresses this:
+
+### Pass 1: Knuth-Plass visual balance
+
+Run a classic Knuth-Plass line-breaking pass that distributes words as evenly as possible across the available lines. This produces a visually balanced baseline split, similar to proportional splitting but with proper optimization for line-length variance.
+
+### Pass 2: Alignment-driven DP
+
+Run the alignment DP, but add a penalty for deviating too far from the Pass 1 baseline. This balances two objectives:
+- **Alignment accuracy** - words on the correct AG line
+- **Visual balance** - lines of roughly equal length
+
+### Additional extensions
+
+**Short-line penalties:** Penalize cuts that produce 1-2 word lines. These "orphan lines" are visually distracting and usually indicate an overly aggressive cut.
+
+**Syntactic bonding:** When dependency parse data is available (e.g., from [Opla](https://github.com/ciscoriordan/opla)), add a cost for cutting between syntactically bonded words (e.g., a determiner and its noun, or an auxiliary and its main verb). This prevents splits like:
+
+```
+159: ...ἐκδίκησιν νὰ
+160: πάρωμε τῶν Τρώων...
+```
+
+where `νὰ πάρωμε` (subjunctive particle + verb) should stay together.
+
+**Dependency bonds** are weighted by relation type: determiners and auxiliaries get a high bond score (never split), while looser relations like adverbial modification get a lower score (split if alignment demands it).
 
 ---
 
