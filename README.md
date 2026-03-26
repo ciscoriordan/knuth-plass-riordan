@@ -4,6 +4,21 @@
 > redistributing prose translations to match the line structure of verse
 > originals, using word-level alignment scores as the optimization objective.
 
+## Table of Contents
+
+- [The Problem](#the-problem)
+- [Prior Art](#prior-art)
+- [This Work: Alignment-Driven Line Breaking](#this-work-alignment-driven-line-breaking)
+  - [Formulation](#formulation)
+  - [Worked Example: Murray EN](#worked-example-iliad-1158-160)
+  - [Worked Example: Polylas MG](#modern-greek-example-polylas-1875)
+- [Extended Version: Two-Pass with Visual Balance](#extended-version-two-pass-with-visual-balance)
+- [Usage](#usage)
+- [References](#references)
+- [Related Repos](#related-repos)
+- [How to Cite](#how-to-cite)
+- [License](#license)
+
 ---
 
 ## The Problem
@@ -16,11 +31,7 @@ For example, Homer's Iliad in Ancient Greek has fixed verse lines. Murray's Engl
 
 ## Prior Art
 
-### Crane Sentence Alignment
-
-The standard approach in digital classics uses hand-curated sentence-level alignment data. Gregory Crane's [Beyond Translation](https://github.com/scaife-viewer/beyond-translation-site) project provides gold-standard sentence boundaries mapping Murray's English sentences to Ancient Greek line ranges.
-
-Crane's data is accurate for what it provides, but it operates at the sentence level only. It tells you *which lines form a sentence block*, not *where to split translation words within that block*.
+**Crane sentence alignment.** The standard approach in digital classics uses hand-curated sentence-level alignment data. Gregory Crane's [Beyond Translation](https://github.com/scaife-viewer/beyond-translation-site) project provides gold-standard sentence boundaries mapping Murray's English sentences to Ancient Greek line ranges. This tells you *which lines form a sentence block*, not *where to split translation words within that block*.
 
 <details>
 <summary><strong>Example: Iliad 1.158-160</strong></summary>
@@ -41,17 +52,9 @@ Crane says these ~30 English words belong to AG lines 158-160. It does not say h
 
 </details>
 
-### Knuth-Plass Line Breaking
+**Knuth-Plass line breaking.** Knuth and Plass (1981) formulated typographic line breaking as a dynamic programming problem: given a paragraph of words and a target line width, find break points that minimize a global "badness" function. The key insight is that locally greedy line breaking produces suboptimal results, while the DP finds globally optimal break points by considering all possible splits simultaneously.
 
-Knuth and Plass (1981) formulated typographic line breaking as a dynamic programming problem: given a paragraph of words and a target line width, find break points that minimize a global "badness" function penalizing overfull and underfull lines.
-
-The key insight is that locally greedy line breaking produces suboptimal results, while the DP finds globally optimal break points by considering all possible splits simultaneously.
-
-> D.E. Knuth and M.F. Plass, "Breaking paragraphs into lines," *Software: Practice and Experience*, 11(11):1119-1184, 1981.
-
-### Word-Level Alignment Models
-
-Neural word alignment models like [SimAlign](https://github.com/cisnlp/simalign) (Jalili Sabet et al., 2020) and AccAlign (Wang et al., 2022) use multilingual transformer embeddings to produce word-level correspondences between parallel texts. The [UGARIT](https://huggingface.co/UGARIT/grc-alignment) project (Yousef et al., 2022) fine-tuned XLM-RoBERTa specifically for Ancient Greek alignment.
+**Word-level alignment models.** Neural word alignment models like [SimAlign](https://github.com/cisnlp/simalign) (Jalili Sabet et al., 2020) and the [UGARIT](https://huggingface.co/UGARIT/grc-alignment) project (Yousef et al., 2022) use multilingual transformer embeddings to produce word-level correspondences between parallel texts.
 
 ---
 
@@ -148,7 +151,7 @@ The algorithm works across any language pair. Here it redistributes Polylas's Mo
 159: σένα ἡλθομεν ὅλοι ἐκδίκησιν νὰ πάρωμε τῶν
 160: Τρώων, καὶ σύ, ὦ σκυλοπρόσωπε, λησμονημένα τά ᾽χεις.
 ```
-*"τῶν Τρώων"* is split across lines 159-160. The naive split ignores alignment entirely.
+*"τῶν Τρώων"* is split across lines 159-160.
 
 **DP redistribution:**
 ```
@@ -157,38 +160,59 @@ The algorithm works across any language pair. Here it redistributes Polylas's Mo
 160: τῶν Τρώων, καὶ σύ, ὦ σκυλοπρόσωπε, λησμονημένα τά ᾽χεις.
      ^^^^^^^^^^
 ```
-*"τῶν Τρώων"* moves to line 160 where `πρὸς Τρώων` lives. The trade-off is uneven line lengths - line 159 is short. See [Extended Version](#extended-version-two-pass-with-visual-balance) below for how to address this.
+*"τῶν Τρώων"* moves to line 160 where `πρὸς Τρώων` lives. The trade-off is uneven line lengths - line 159 is short. The [extended version](#extended-version-two-pass-with-visual-balance) addresses this.
 
 ---
 
 ## Extended Version: Two-Pass with Visual Balance
 
-The core algorithm optimizes purely for alignment score, which can produce very uneven line lengths (as in the MG example above). An extended two-pass version addresses this:
+The core algorithm optimizes purely for alignment score, which can produce very uneven line lengths (as in the MG example above). The extended version adds a Knuth-Plass visual balance pass and several penalty terms.
 
 ### Pass 1: Knuth-Plass visual balance
 
-Run a classic Knuth-Plass line-breaking pass that distributes words as evenly as possible across the available lines. This produces a visually balanced baseline split, similar to proportional splitting but with proper optimization for line-length variance.
+A classic Knuth-Plass pass distributes words as evenly as possible across the available lines, minimizing the sum of squared deviations from the ideal line length (total characters / number of lines). This produces a visually balanced baseline.
 
-### Pass 2: Alignment-driven DP
+### Pass 2: Alignment-driven DP with balance penalty
 
-Run the alignment DP, but add a penalty for deviating too far from the Pass 1 baseline. This balances two objectives:
-- **Alignment accuracy** - words on the correct AG line
-- **Visual balance** - lines of roughly equal length
+The alignment DP's `span_score` is augmented with a balance term that penalizes deviating from the Pass 1 baseline:
 
-### Additional extensions
-
-**Short-line penalties:** Penalize cuts that produce 1-2 word lines. These "orphan lines" are visually distracting and usually indicate an overly aggressive cut.
-
-**Syntactic bonding:** When dependency parse data is available (e.g., from [Opla](https://github.com/ciscoriordan/opla)), add a cost for cutting between syntactically bonded words (e.g., a determiner and its noun, or an auxiliary and its main verb). This prevents splits like:
-
-```
-159: ...ἐκδίκησιν νὰ
-160: πάρωμε τῶν Τρώων...
+```python
+def span_score(line_idx, start, end):
+    align   = prefix[line_idx][end] - prefix[line_idx][start]
+    num     = end - start
+    dev     = (num - ideal) / max(ideal, 1)
+    balance = -0.3 * dev * dev * ideal
+    short   = SHORT_PENALTY * max(0, MIN_WORDS - num) if num < MIN_WORDS else 0
+    bond    = BOND_PENALTY if start > 0 and (start - 1) in bond_set else 0
+    return align + balance + short + bond
 ```
 
-where `νὰ πάρωμε` (subjunctive particle + verb) should stay together.
+This balances alignment accuracy against visual evenness, preventing the DP from creating 1-word orphan lines just to score a single alignment.
 
-**Dependency bonds** are weighted by relation type: determiners and auxiliaries get a high bond score (never split), while looser relations like adverbial modification get a lower score (split if alignment demands it).
+### Short-line penalties
+
+Lines with fewer than `MIN_WORDS` (default 2) words receive an additional penalty. This discourages orphan lines like:
+
+```
+159: πάρωμε
+160: τῶν Τρώων, καὶ σύ...
+```
+
+### Syntactic bonding
+
+When dependency parse data is available (e.g., from [Opla](https://github.com/ciscoriordan/opla)), the algorithm adds a penalty for cutting between syntactically bonded words. Bond types by dependency relation:
+
+| Relation | Example | Bond strength |
+|----------|---------|:---:|
+| `det` (determiner) | τὸν Μενέλαο | high |
+| `case` (preposition) | πρὸς Τρώων | high |
+| `mark` (subordinator) | νὰ πάρωμε | high |
+| `amod` (adjective) | θεῖος Ἀχιλλέας | medium |
+| `cc` (conjunction) | καὶ σύ | medium |
+
+This prevents splits like `νὰ / πάρωμε` where the subjunctive particle and verb should stay together. Bonds are weighted so strong syntactic dependencies (det, case, mark) are almost never broken, while weaker ones (cc, amod) yield to alignment when needed.
+
+The extended version with all features is implemented in [`redistribute_dp.py`](redistribute_dp.py).
 
 ---
 
@@ -203,6 +227,11 @@ cuts = redistribute(
     words=["But", "you", ..., "Trojans.", "This", ...],
     word_to_ag={0: [158], 1: [158], ..., 23: [160], ...},
 )
+
+# With syntactic bonds (MG example)
+from redistribute_dp import build_bonds
+bonds = build_bonds(mg_words, dp_results=dep_parse_output)
+cuts = redistribute(ag_lines, mg_words, mg_word_to_ag, bonds=bonds)
 
 # High-level: redistribute a full passage
 result = redistribute_passage(
@@ -227,6 +256,11 @@ python example.py
 2. M. Jalili Sabet, P. Dufter, F. Yvon, and H. Schutze, "[SimAlign: High quality word alignments without parallel training data using static and contextualized embeddings](https://aclanthology.org/2020.findings-emnlp.147/)," *Findings of EMNLP*, 2020.
 3. T. Yousef, C. Palladino, F. Shamsian, A. Meeus, and G.C. Crane, "[Translation alignment with Ugarit](https://www.mdpi.com/2078-2489/13/2/65)," *Information*, 13(2):65, 2022.
 4. G.R. Crane et al., [Beyond Translation](https://github.com/scaife-viewer/beyond-translation-site), Scaife Viewer project.
+
+## Related Repos
+
+- **[Opla](https://github.com/ciscoriordan/opla)** - GPU-optimized Greek POS tagger + dependency parser (provides syntactic bonds)
+- **[Dilemma](https://github.com/ciscoriordan/dilemma)** - Greek lemmatizer (used by the alignment pipeline that produces word-to-line mappings)
 
 ## How to Cite
 
