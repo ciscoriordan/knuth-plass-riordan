@@ -138,6 +138,27 @@ dp[N-1][M]
 ```
 *"from the Trojans"* moves to line 160 where `πρὸς Τρώων` lives. The DP sees that *"from"* and *"Trojans"* both align to AG 160 and cuts accordingly.
 
+### Modern Greek Example: Polylas (1875)
+
+The algorithm works across any language pair. Here it redistributes Polylas's Modern Greek verse translation (concatenated into prose) across the same AG lines:
+
+**Proportional split** (naive):
+```
+158: ἀλλὰ γιὰ τὸν Μενέλαο καί, ἀναίσχυντε, γιὰ
+159: σένα ἡλθομεν ὅλοι ἐκδίκησιν νὰ πάρωμε τῶν
+160: Τρώων, καὶ σύ, ὦ σκυλοπρόσωπε, λησμονημένα τά ᾽χεις.
+```
+*"τῶν Τρώων"* is split across lines 159-160. The naive split ignores alignment entirely.
+
+**DP redistribution:**
+```
+158: ἀλλὰ γιὰ τὸν Μενέλαο καί, ἀναίσχυντε, γιὰ σένα ἡλθομεν ὅλοι
+159: ἐκδίκησιν νὰ πάρωμε
+160: τῶν Τρώων, καὶ σύ, ὦ σκυλοπρόσωπε, λησμονημένα τά ᾽χεις.
+     ^^^^^^^^^^
+```
+*"τῶν Τρώων"* moves to line 160 where `πρὸς Τρώων` lives. The trade-off is uneven line lengths - line 159 is short. In practice, the extended version of this algorithm (used in [iliad-align](https://github.com/ciscoriordan/iliad-align)) adds a Knuth-Plass visual balance pass and short-line penalties to address this.
+
 ---
 
 ## Usage

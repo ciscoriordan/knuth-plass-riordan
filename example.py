@@ -83,3 +83,69 @@ for i, ln in enumerate(ag_lines):
 print("\n=== Ancient Greek (reference) ===")
 for ln in ag_lines:
     print(f"  AG {ln}: {ag_text[ln]}")
+
+
+# --- Modern Greek (Polylas) example ---
+# Polylas's 1875 verse translation, treated as continuous prose.
+# Original Polylas has line breaks matching AG, but a prose MG translation
+# (or one reformatted as continuous text) would need redistribution.
+print("\n\n--- Modern Greek (Polylas, 1875) ---\n")
+
+mg_words = (
+    "ἀλλὰ γιὰ τὸν Μενέλαο καί, ἀναίσχυντε, γιὰ σένα "
+    "ἡλθομεν ὅλοι ἐκδίκησιν νὰ πάρωμε τῶν Τρώων, "
+    "καὶ σύ, ὦ σκυλοπρόσωπε, λησμονημένα τά ᾽χεις."
+).split()
+
+# AG-MG word alignments
+mg_word_to_ag = {
+    0: [158],   # ἀλλὰ -> ἀλλὰ
+    1: [159],   # γιὰ -> σοί
+    2: [159],   # τὸν -> Μενελάῳ
+    3: [159],   # Μενέλαο -> Μενελάῳ
+    # 4: καί, -> (unaligned)
+    5: [158],   # ἀναίσχυντε, -> ἀναιδὲς
+    6: [158],   # γιὰ -> σοὶ
+    7: [158],   # σένα -> σοὶ
+    8: [158],   # ἡλθομεν -> ἑσπόμεθʼ
+    9: [158],   # ὅλοι -> ἅμʼ
+    10: [159],  # ἐκδίκησιν -> τιμὴν
+    11: [159],  # νὰ -> ἀρνύμενοι
+    12: [159],  # πάρωμε -> ἀρνύμενοι
+    13: [160],  # τῶν -> Τρώων
+    14: [160],  # Τρώων, -> Τρώων
+    # 15: καὶ -> (unaligned)
+    16: [158],  # σύ, -> σὺ
+    # 17: ὦ -> (unaligned)
+    18: [159],  # σκυλοπρόσωπε, -> κυνῶπα
+    19: [160],  # λησμονημένα -> μετατρέπῃ
+    20: [160],  # τά -> οὔ τι
+    21: [160],  # ᾽χεις. -> ἀλεγίζεις
+}
+
+# --- Naive proportional split ---
+mg_m = len(mg_words)
+mg_prop = mg_m // n
+mg_naive_cuts = [0, mg_prop, 2 * mg_prop, mg_m]
+
+print("=== Naive proportional split (MG) ===")
+for i, ln in enumerate(ag_lines):
+    s, e = mg_naive_cuts[i], mg_naive_cuts[i + 1]
+    print(f"  AG {ln}: {' '.join(mg_words[s:e])}")
+
+# --- DP-optimized split ---
+mg_cuts = redistribute(ag_lines, mg_words, mg_word_to_ag)
+
+print("\n=== Alignment-driven DP split (MG) ===")
+for i, ln in enumerate(ag_lines):
+    s, e = mg_cuts[i], mg_cuts[i + 1]
+    print(f"  AG {ln}: {' '.join(mg_words[s:e])}")
+
+print("\n=== Original Polylas line breaks (reference) ===")
+mg_ref = {
+    158: "ἀλλὰ γιὰ τὸν Μενέλαο καί, ἀναίσχυντε, γιὰ σένα",
+    159: "ἡλθομεν ὅλοι ἐκδίκησιν νὰ πάρωμε τῶν Τρώων,",
+    160: "καὶ σύ, ὦ σκυλοπρόσωπε, λησμονημένα τά ᾽χεις.",
+}
+for ln in ag_lines:
+    print(f"  AG {ln}: {mg_ref[ln]}")
